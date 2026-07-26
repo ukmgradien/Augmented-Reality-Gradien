@@ -74,60 +74,13 @@ function init() {
 function createPortalMask() {
   portalGroup = new THREE.Group();
 
-  // 1. The Occluder (The invisible mask that creates the "hole" effect)
-  // We make a box that extends downwards, and we render it invisibly, but it blocks depth.
-  const maskGeometry = new THREE.BoxGeometry(2, 2, 2);
-  
-  // We need to punch a hole in the top of the box. 
-  // An easier way is to create 4 walls around the hole instead.
-  const wallMaterial = new THREE.MeshBasicMaterial({ 
-    colorWrite: false, // Don't draw color (invisible)
-    depthWrite: true   // Do write to depth buffer (blocks things behind it)
-  });
-
-  // Create walls for the hole (Size of hole: 1x1 meter)
-  const wallThickness = 2;
-  const holeSize = 1.0;
-  const depth = 2.0;
-
-  // Left wall
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, depth, holeSize + wallThickness*2), wallMaterial);
-  leftWall.position.set(-holeSize/2 - wallThickness/2, -depth/2, 0);
-  
-  // Right wall
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, depth, holeSize + wallThickness*2), wallMaterial);
-  rightWall.position.set(holeSize/2 + wallThickness/2, -depth/2, 0);
-  
-  // Front wall
-  const frontWall = new THREE.Mesh(new THREE.BoxGeometry(holeSize, depth, wallThickness), wallMaterial);
-  frontWall.position.set(0, -depth/2, holeSize/2 + wallThickness/2);
-  
-  // Back wall
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(holeSize, depth, wallThickness), wallMaterial);
-  backWall.position.set(0, -depth/2, -holeSize/2 - wallThickness/2);
-
-  // Bottom wall (floor of the hole)
-  const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(holeSize, wallThickness, holeSize), wallMaterial);
-  bottomWall.position.set(0, -depth - wallThickness/2, 0);
-
-  const occluderGroup = new THREE.Group();
-  occluderGroup.add(leftWall, rightWall, frontWall, backWall, bottomWall);
-  portalGroup.add(occluderGroup);
-
-  // 2. The visual edge of the hole (crack graphic or border)
+  // The visual edge of the hole (crack graphic or border)
   const borderGeometry = new THREE.RingGeometry(0.5, 0.6, 32).rotateX(-Math.PI / 2);
   const borderMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide });
   const border = new THREE.Mesh(borderGeometry, borderMaterial);
   // Place it slightly above the ground to avoid Z-fighting
   border.position.y = 0.001; 
   portalGroup.add(border);
-
-  // 3. Inner Walls of the hole (darkness)
-  const innerWallGeometry = new THREE.CylinderGeometry(0.5, 0.5, depth, 32, 1, true);
-  const innerWallMaterial = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
-  const innerWalls = new THREE.Mesh(innerWallGeometry, innerWallMaterial);
-  innerWalls.position.y = -depth/2;
-  portalGroup.add(innerWalls);
 
   // 4. Load the Wyvern inside the hole
   const loader = new GLTFLoader();
@@ -137,7 +90,7 @@ function createPortalMask() {
     wyvern.scale.set(15, 15, 15); 
     
     // Position deep inside the hole, with X and Z offsets so you aren't inside the massive body
-    wyvern.position.set(-4, -1.5, -30);
+    wyvern.position.set(-4, 0, -45);
     
     // Play animation
     if (gltf.animations && gltf.animations.length > 0) {
