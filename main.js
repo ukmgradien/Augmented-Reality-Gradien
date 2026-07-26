@@ -90,7 +90,7 @@ function createPortalMask() {
     wyvern.scale.set(15, 15, 15); 
     
     // Position deep inside the hole, with X and Z offsets so you aren't inside the massive body
-    wyvern.position.set(-4, 0, -45);
+    wyvern.position.set(-4, 2, -35);
     
     // Play animation
     if (gltf.animations && gltf.animations.length > 0) {
