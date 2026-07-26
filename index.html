@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Wyvern AR Portal</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="ui-container">
+    <div class="glass-panel">
+      <h1>Wyvern Portal</h1>
+      <p>Scan your floor to reveal the hidden crack and summon the dragon into your reality.</p>
+      
+      <div class="ar-instructions">
+        <div class="step">
+          <span class="icon">🔍</span>
+          <span>Point device at a well-lit floor</span>
+        </div>
+        <div class="step">
+          <span class="icon">🔄</span>
+          <span>Move device slowly to scan</span>
+        </div>
+        <div class="step">
+          <span class="icon">👆</span>
+          <span>Tap the screen to open the portal</span>
+        </div>
+      </div>
+      
+      <div id="ar-button-container">
+        <!-- Three.js ARButton will be injected here -->
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
