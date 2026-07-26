@@ -134,7 +134,7 @@ function createPortalMask() {
   loader.load('./Models/wyvern_animated_low.glb', (gltf) => {
     const wyvern = gltf.scene;
     // Scale down if necessary
-    wyvern.scale.set(0.1, 0.1, 0.1); 
+    wyvern.scale.set(15, 15, 15); 
     
     // Position deep inside the hole
     wyvern.position.set(0, -1.5, 0);
