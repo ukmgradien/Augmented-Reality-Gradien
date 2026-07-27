@@ -15,6 +15,11 @@ let mixer; // For dragon animation
 const clock = new THREE.Clock();
 let portalPlaced = false;
 
+let wyvernModel = null;
+let isDisintegrating = false;
+let particlesGroup = null;
+let particlesData = [];
+
 init();
 animate();
 
@@ -48,6 +53,10 @@ function init() {
   renderer.xr.addEventListener('sessionend', () => {
     document.body.classList.remove('in-ar');
     portalPlaced = false;
+    isDisintegrating = false;
+    wyvernModel = null;
+    particlesGroup = null;
+    particlesData = [];
     if (portalGroup) {
         scene.remove(portalGroup);
         portalGroup = null;
@@ -85,26 +94,30 @@ function createPortalMask() {
   // 4. Load the Wyvern inside the hole
   const loader = new GLTFLoader();
   loader.load('./Models/wyvern_animated_low.glb', (gltf) => {
-    const wyvern = gltf.scene;
+    wyvernModel = gltf.scene;
     // Scale down if necessary
-    wyvern.scale.set(15, 15, 15); 
+    wyvernModel.scale.set(15, 15, 15); 
     
     // Position deep inside the hole, with X and Z offsets so you aren't inside the massive body
-    wyvern.position.set(-4, 2, -35);
+    wyvernModel.position.set(-4, 2, -35);
     
     // Play animation
     if (gltf.animations && gltf.animations.length > 0) {
-      mixer = new THREE.AnimationMixer(wyvern);
+      mixer = new THREE.AnimationMixer(wyvernModel);
       const action = mixer.clipAction(gltf.animations[0]);
       action.play();
     }
 
-    portalGroup.add(wyvern);
+    portalGroup.add(wyvernModel);
 
     // Simple animation: make the dragon rise up
     const riseInterval = setInterval(() => {
-        if (wyvern.position.y < 0.2) {
-            wyvern.position.y += 0.005;
+        if (!wyvernModel) {
+            clearInterval(riseInterval);
+            return;
+        }
+        if (wyvernModel.position.y < 0.2) {
+            wyvernModel.position.y += 0.005;
         } else {
             clearInterval(riseInterval);
         }
@@ -115,6 +128,50 @@ function createPortalMask() {
   });
 
   return portalGroup;
+}
+
+function disintegrateWyvern() {
+  if (!wyvernModel || isDisintegrating) return;
+  isDisintegrating = true;
+  
+  particlesGroup = new THREE.Group();
+  particlesGroup.position.copy(wyvernModel.position);
+  particlesGroup.quaternion.copy(wyvernModel.quaternion);
+  particlesGroup.scale.copy(wyvernModel.scale);
+
+  wyvernModel.traverse((child) => {
+    if (child.isMesh) {
+      const geometry = child.geometry.clone();
+      const material = new THREE.PointsMaterial({
+        color: 0xa855f7,
+        size: 0.03,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      const points = new THREE.Points(geometry, material);
+      particlesGroup.add(points);
+
+      const posAttribute = geometry.attributes.position;
+      const velocities = [];
+      for (let i = 0; i < posAttribute.count; i++) {
+        velocities.push(
+          (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 5 + 2,
+          (Math.random() - 0.5) * 5
+        );
+      }
+      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
+      
+      particlesData.push({ points: points, geometry: geometry, material: material });
+    }
+  });
+
+  portalGroup.add(particlesGroup);
+  portalGroup.remove(wyvernModel);
+  wyvernModel = null;
 }
 
 function onSelect() {
@@ -128,6 +185,8 @@ function onSelect() {
     scene.add(portal);
     portalPlaced = true;
     reticle.visible = false; // Hide reticle once placed
+  } else if (portalPlaced && !isDisintegrating) {
+    disintegrateWyvern();
   }
 }
 
@@ -144,6 +203,24 @@ function animate() {
 function render(timestamp, frame) {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
+
+  if (isDisintegrating && particlesGroup) {
+    particlesData.forEach(data => {
+      const positions = data.geometry.attributes.position.array;
+      const velocities = data.geometry.attributes.velocity.array;
+      
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i] += velocities[i] * delta;
+        positions[i+1] += velocities[i+1] * delta;
+        positions[i+2] += velocities[i+2] * delta;
+        
+        // gravity
+        velocities[i+1] -= 2.0 * delta;
+      }
+      data.geometry.attributes.position.needsUpdate = true;
+      data.material.opacity -= delta * 0.5;
+    });
+  }
 
   if (frame) {
     const referenceSpace = renderer.xr.getReferenceSpace();
