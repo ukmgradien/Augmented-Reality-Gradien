@@ -144,7 +144,7 @@ function disintegrateWyvern() {
       if (child.material) {
         child.material = child.material.clone();
         child.material.transparent = true;
-        child.material.depthWrite = false;
+        child.material.depthWrite = true; // Set to true to prevent seeing inner geometry like eyeballs
         child.material.needsUpdate = true;
       }
 
