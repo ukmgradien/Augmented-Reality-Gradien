@@ -141,29 +141,7 @@ function disintegrateWyvern() {
 
   wyvernModel.traverse((child) => {
     if (child.isMesh) {
-      if (child.material) {
-        if (Array.isArray(child.material)) {
-          child.material = child.material.map(m => {
-            const mat = m.clone();
-            mat.transparent = true;
-            mat.depthWrite = true;
-            mat.needsUpdate = true;
-            // Instantly hide eye materials to prevent creepy floating eyeballs
-            if (mat.name && mat.name.toLowerCase().includes('eye')) {
-              mat.opacity = 0;
-            }
-            return mat;
-          });
-        } else {
-          child.material = child.material.clone();
-          child.material.transparent = true;
-          child.material.depthWrite = true;
-          child.material.needsUpdate = true;
-          if (child.material.name && child.material.name.toLowerCase().includes('eye')) {
-            child.material.opacity = 0;
-          }
-        }
-      }
+      // No need to modify materials anymore since we will hide the wyvern instantly
 
       const originalGeometry = child.geometry;
       const posAttribute = originalGeometry.attributes.position;
@@ -221,7 +199,12 @@ function disintegrateWyvern() {
   });
 
   portalGroup.add(particlesGroup);
-  // We don't remove wyvernModel here anymore so we can fade it out over time
+  
+  // Instantly hide the wyvern model to avoid transparency artifacts
+  if (wyvernModel) {
+    portalGroup.remove(wyvernModel);
+    wyvernModel = null;
+  }
 }
 
 function onSelect() {
@@ -255,27 +238,6 @@ function render(timestamp, frame) {
   if (mixer) mixer.update(delta);
 
   if (isDisintegrating && particlesGroup) {
-    if (wyvernModel) {
-      let isFullyFaded = true;
-      wyvernModel.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          mats.forEach(mat => {
-            mat.opacity -= delta * 0.25;
-            if (mat.opacity > 0) {
-              isFullyFaded = false;
-            } else {
-              mat.opacity = 0;
-            }
-          });
-        }
-      });
-      if (isFullyFaded) {
-        portalGroup.remove(wyvernModel);
-        wyvernModel = null;
-      }
-    }
-
     const dummy = new THREE.Object3D();
     const matrix = new THREE.Matrix4();
     const position = new THREE.Vector3();
