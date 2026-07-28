@@ -141,10 +141,45 @@ function disintegrateWyvern() {
 
   wyvernModel.traverse((child) => {
     if (child.isMesh) {
-      const geometry = child.geometry.clone();
+      if (child.material) {
+        child.material.transparent = true;
+        child.material.needsUpdate = true;
+      }
+
+      const originalGeometry = child.geometry;
+      const posAttribute = originalGeometry.attributes.position;
+      const count = posAttribute.count;
+      
+      const multiplier = 3; // Increase number of particles by 3x
+      const newPos = new Float32Array(count * multiplier * 3);
+      const velocities = [];
+      
+      for (let i = 0; i < count; i++) {
+        const x = posAttribute.getX(i);
+        const y = posAttribute.getY(i);
+        const z = posAttribute.getZ(i);
+        
+        for (let m = 0; m < multiplier; m++) {
+          const idx = (i * multiplier + m) * 3;
+          newPos[idx] = x + (Math.random() - 0.5) * 0.2;
+          newPos[idx+1] = y + (Math.random() - 0.5) * 0.2;
+          newPos[idx+2] = z + (Math.random() - 0.5) * 0.2;
+          
+          velocities.push(
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5 + 2,
+            (Math.random() - 0.5) * 5
+          );
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
+      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
+
       const material = new THREE.PointsMaterial({
         color: 0xa855f7,
-        size: 0.03,
+        size: 0.02,
         transparent: true,
         opacity: 1,
         blending: THREE.AdditiveBlending,
@@ -153,25 +188,13 @@ function disintegrateWyvern() {
 
       const points = new THREE.Points(geometry, material);
       particlesGroup.add(points);
-
-      const posAttribute = geometry.attributes.position;
-      const velocities = [];
-      for (let i = 0; i < posAttribute.count; i++) {
-        velocities.push(
-          (Math.random() - 0.5) * 5,
-          (Math.random() - 0.5) * 5 + 2,
-          (Math.random() - 0.5) * 5
-        );
-      }
-      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
       
       particlesData.push({ points: points, geometry: geometry, material: material });
     }
   });
 
   portalGroup.add(particlesGroup);
-  portalGroup.remove(wyvernModel);
-  wyvernModel = null;
+  // We don't remove wyvernModel here anymore so we can fade it out over time
 }
 
 function onSelect() {
@@ -205,6 +228,24 @@ function render(timestamp, frame) {
   if (mixer) mixer.update(delta);
 
   if (isDisintegrating && particlesGroup) {
+    if (wyvernModel) {
+      let isFullyFaded = true;
+      wyvernModel.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.opacity -= delta * 1.5; // Fades out over ~0.66 seconds
+          if (child.material.opacity > 0) {
+            isFullyFaded = false;
+          } else {
+            child.material.opacity = 0;
+          }
+        }
+      });
+      if (isFullyFaded) {
+        portalGroup.remove(wyvernModel);
+        wyvernModel = null;
+      }
+    }
+
     particlesData.forEach(data => {
       const positions = data.geometry.attributes.position.array;
       const velocities = data.geometry.attributes.velocity.array;
