@@ -142,10 +142,27 @@ function disintegrateWyvern() {
   wyvernModel.traverse((child) => {
     if (child.isMesh) {
       if (child.material) {
-        child.material = child.material.clone();
-        child.material.transparent = true;
-        child.material.depthWrite = true; // Set to true to prevent seeing inner geometry like eyeballs
-        child.material.needsUpdate = true;
+        if (Array.isArray(child.material)) {
+          child.material = child.material.map(m => {
+            const mat = m.clone();
+            mat.transparent = true;
+            mat.depthWrite = true;
+            mat.needsUpdate = true;
+            // Instantly hide eye materials to prevent creepy floating eyeballs
+            if (mat.name && mat.name.toLowerCase().includes('eye')) {
+              mat.opacity = 0;
+            }
+            return mat;
+          });
+        } else {
+          child.material = child.material.clone();
+          child.material.transparent = true;
+          child.material.depthWrite = true;
+          child.material.needsUpdate = true;
+          if (child.material.name && child.material.name.toLowerCase().includes('eye')) {
+            child.material.opacity = 0;
+          }
+        }
       }
 
       const originalGeometry = child.geometry;
@@ -242,12 +259,15 @@ function render(timestamp, frame) {
       let isFullyFaded = true;
       wyvernModel.traverse((child) => {
         if (child.isMesh && child.material) {
-          child.material.opacity -= delta * 0.25; // Much slower fade, over ~4 seconds
-          if (child.material.opacity > 0) {
-            isFullyFaded = false;
-          } else {
-            child.material.opacity = 0;
-          }
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach(mat => {
+            mat.opacity -= delta * 0.25;
+            if (mat.opacity > 0) {
+              isFullyFaded = false;
+            } else {
+              mat.opacity = 0;
+            }
+          });
         }
       });
       if (isFullyFaded) {
