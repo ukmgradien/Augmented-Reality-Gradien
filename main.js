@@ -152,7 +152,7 @@ function disintegrateWyvern() {
       const posAttribute = originalGeometry.attributes.position;
       const count = posAttribute.count;
       
-      const step = 10; // Only use 1 out of every 10 vertices to drastically reduce particles
+      const step = 33; // Only use 1 out of every 33 vertices to reduce particles by another ~70%
       const totalParticles = Math.floor(count / step);
       
       const particleGeo = new THREE.TetrahedronGeometry(0.05); // Ash chunks
