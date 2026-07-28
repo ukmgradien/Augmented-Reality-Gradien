@@ -152,15 +152,14 @@ function disintegrateWyvern() {
       const posAttribute = originalGeometry.attributes.position;
       const count = posAttribute.count;
       
-      const multiplier = 3; // Keep it reasonable for InstancedMesh
-      const totalParticles = count * multiplier;
+      const step = 10; // Only use 1 out of every 10 vertices to drastically reduce particles
+      const totalParticles = Math.floor(count / step);
       
-      const particleGeo = new THREE.TetrahedronGeometry(0.05); // Actual 3D shards!
+      const particleGeo = new THREE.TetrahedronGeometry(0.05); // Ash chunks
       const particleMat = new THREE.MeshBasicMaterial({
-        color: 0xa855f7,
+        color: 0x888888, // Ash gray color
         transparent: true,
         opacity: 1,
-        blending: THREE.AdditiveBlending,
         depthWrite: false
       });
       
@@ -168,33 +167,30 @@ function disintegrateWyvern() {
       const dummy = new THREE.Object3D();
       const velocities = new Float32Array(totalParticles * 3);
       
-      for (let i = 0; i < count; i++) {
-        const x = posAttribute.getX(i);
-        const y = posAttribute.getY(i);
-        const z = posAttribute.getZ(i);
+      for (let i = 0; i < totalParticles; i++) {
+        const vertexIdx = i * step;
+        const x = posAttribute.getX(vertexIdx);
+        const y = posAttribute.getY(vertexIdx);
+        const z = posAttribute.getZ(vertexIdx);
         
-        for (let m = 0; m < multiplier; m++) {
-          const idx = i * multiplier + m;
-          
-          dummy.position.set(
-            x + (Math.random() - 0.5) * 0.2,
-            y + (Math.random() - 0.5) * 0.2,
-            z + (Math.random() - 0.5) * 0.2
-          );
-          
-          dummy.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-          );
-          
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(idx, dummy.matrix);
-          
-          velocities[idx * 3] = (Math.random() - 0.5) * 1.5;
-          velocities[idx * 3 + 1] = (Math.random() - 0.5) * 1.5 + 0.5;
-          velocities[idx * 3 + 2] = (Math.random() - 0.5) * 1.5;
-        }
+        dummy.position.set(
+          x + (Math.random() - 0.5) * 0.2,
+          y + (Math.random() - 0.5) * 0.2,
+          z + (Math.random() - 0.5) * 0.2
+        );
+        
+        dummy.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(i, dummy.matrix);
+        
+        velocities[i * 3] = (Math.random() - 0.5) * 1.5;
+        velocities[i * 3 + 1] = (Math.random() - 0.5) * 1.5 + 0.5;
+        velocities[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
       }
       instancedMesh.instanceMatrix.needsUpdate = true;
       particlesGroup.add(instancedMesh);
