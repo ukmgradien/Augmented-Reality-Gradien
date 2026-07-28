@@ -142,7 +142,9 @@ function disintegrateWyvern() {
   wyvernModel.traverse((child) => {
     if (child.isMesh) {
       if (child.material) {
+        child.material = child.material.clone();
         child.material.transparent = true;
+        child.material.depthWrite = false;
         child.material.needsUpdate = true;
       }
 
@@ -150,7 +152,7 @@ function disintegrateWyvern() {
       const posAttribute = originalGeometry.attributes.position;
       const count = posAttribute.count;
       
-      const multiplier = 3; // Increase number of particles by 3x
+      const multiplier = 50; // Massively increase particles
       const newPos = new Float32Array(count * multiplier * 3);
       const velocities = [];
       
@@ -161,14 +163,15 @@ function disintegrateWyvern() {
         
         for (let m = 0; m < multiplier; m++) {
           const idx = (i * multiplier + m) * 3;
-          newPos[idx] = x + (Math.random() - 0.5) * 0.2;
-          newPos[idx+1] = y + (Math.random() - 0.5) * 0.2;
-          newPos[idx+2] = z + (Math.random() - 0.5) * 0.2;
+          newPos[idx] = x + (Math.random() - 0.5) * 1.0;
+          newPos[idx+1] = y + (Math.random() - 0.5) * 1.0;
+          newPos[idx+2] = z + (Math.random() - 0.5) * 1.0;
           
+          // Reduced velocity so they don't instantly fly out of the camera view
           velocities.push(
-            (Math.random() - 0.5) * 5,
-            (Math.random() - 0.5) * 5 + 2,
-            (Math.random() - 0.5) * 5
+            (Math.random() - 0.5) * 1.5,
+            (Math.random() - 0.5) * 1.5 + 0.5,
+            (Math.random() - 0.5) * 1.5
           );
         }
       }
@@ -179,7 +182,7 @@ function disintegrateWyvern() {
 
       const material = new THREE.PointsMaterial({
         color: 0xa855f7,
-        size: 0.02,
+        size: 25.0, // Massively larger size
         transparent: true,
         opacity: 1,
         blending: THREE.AdditiveBlending,
@@ -232,7 +235,7 @@ function render(timestamp, frame) {
       let isFullyFaded = true;
       wyvernModel.traverse((child) => {
         if (child.isMesh && child.material) {
-          child.material.opacity -= delta * 1.5; // Fades out over ~0.66 seconds
+          child.material.opacity -= delta * 0.25; // Much slower fade, over ~4 seconds
           if (child.material.opacity > 0) {
             isFullyFaded = false;
           } else {
@@ -256,10 +259,10 @@ function render(timestamp, frame) {
         positions[i+2] += velocities[i+2] * delta;
         
         // gravity
-        velocities[i+1] -= 2.0 * delta;
+        velocities[i+1] -= 0.5 * delta;
       }
       data.geometry.attributes.position.needsUpdate = true;
-      data.material.opacity -= delta * 0.5;
+      data.material.opacity -= delta * 0.25;
     });
   }
 
