@@ -152,9 +152,21 @@ function disintegrateWyvern() {
       const posAttribute = originalGeometry.attributes.position;
       const count = posAttribute.count;
       
-      const multiplier = 50; // Massively increase particles
-      const newPos = new Float32Array(count * multiplier * 3);
-      const velocities = [];
+      const multiplier = 3; // Keep it reasonable for InstancedMesh
+      const totalParticles = count * multiplier;
+      
+      const particleGeo = new THREE.TetrahedronGeometry(0.05); // Actual 3D shards!
+      const particleMat = new THREE.MeshBasicMaterial({
+        color: 0xa855f7,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      
+      const instancedMesh = new THREE.InstancedMesh(particleGeo, particleMat, totalParticles);
+      const dummy = new THREE.Object3D();
+      const velocities = new Float32Array(totalParticles * 3);
       
       for (let i = 0; i < count; i++) {
         const x = posAttribute.getX(i);
@@ -162,37 +174,36 @@ function disintegrateWyvern() {
         const z = posAttribute.getZ(i);
         
         for (let m = 0; m < multiplier; m++) {
-          const idx = (i * multiplier + m) * 3;
-          newPos[idx] = x + (Math.random() - 0.5) * 1.0;
-          newPos[idx+1] = y + (Math.random() - 0.5) * 1.0;
-          newPos[idx+2] = z + (Math.random() - 0.5) * 1.0;
+          const idx = i * multiplier + m;
           
-          // Reduced velocity so they don't instantly fly out of the camera view
-          velocities.push(
-            (Math.random() - 0.5) * 1.5,
-            (Math.random() - 0.5) * 1.5 + 0.5,
-            (Math.random() - 0.5) * 1.5
+          dummy.position.set(
+            x + (Math.random() - 0.5) * 0.2,
+            y + (Math.random() - 0.5) * 0.2,
+            z + (Math.random() - 0.5) * 0.2
           );
+          
+          dummy.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+          );
+          
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(idx, dummy.matrix);
+          
+          velocities[idx * 3] = (Math.random() - 0.5) * 1.5;
+          velocities[idx * 3 + 1] = (Math.random() - 0.5) * 1.5 + 0.5;
+          velocities[idx * 3 + 2] = (Math.random() - 0.5) * 1.5;
         }
       }
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
-      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
-
-      const material = new THREE.PointsMaterial({
-        color: 0xa855f7,
-        size: 25.0, // Massively larger size
-        transparent: true,
-        opacity: 1,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-
-      const points = new THREE.Points(geometry, material);
-      particlesGroup.add(points);
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      particlesGroup.add(instancedMesh);
       
-      particlesData.push({ points: points, geometry: geometry, material: material });
+      particlesData.push({ 
+        mesh: instancedMesh, 
+        velocities: velocities,
+        total: totalParticles
+      });
     }
   });
 
@@ -249,20 +260,34 @@ function render(timestamp, frame) {
       }
     }
 
+    const dummy = new THREE.Object3D();
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const rotation = new THREE.Euler();
+
     particlesData.forEach(data => {
-      const positions = data.geometry.attributes.position.array;
-      const velocities = data.geometry.attributes.velocity.array;
-      
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i] += velocities[i] * delta;
-        positions[i+1] += velocities[i+1] * delta;
-        positions[i+2] += velocities[i+2] * delta;
+      for (let i = 0; i < data.total; i++) {
+        data.mesh.getMatrixAt(i, matrix);
+        matrix.decompose(position, quaternion, scale);
         
-        // gravity
-        velocities[i+1] -= 0.5 * delta;
+        position.x += data.velocities[i*3] * delta;
+        position.y += data.velocities[i*3+1] * delta;
+        position.z += data.velocities[i*3+2] * delta;
+        
+        data.velocities[i*3+1] -= 0.5 * delta; // gravity
+        
+        rotation.setFromQuaternion(quaternion);
+        rotation.x += delta * 2;
+        rotation.y += delta * 3;
+        quaternion.setFromEuler(rotation);
+
+        matrix.compose(position, quaternion, scale);
+        data.mesh.setMatrixAt(i, matrix);
       }
-      data.geometry.attributes.position.needsUpdate = true;
-      data.material.opacity -= delta * 0.25;
+      data.mesh.instanceMatrix.needsUpdate = true;
+      data.mesh.material.opacity -= delta * 0.25;
     });
   }
 
